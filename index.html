@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planificador 2026 - Edutin Style</title>
+    <style>
+        :root {
+            --primary: #001d4a;
+            --accent: #ff8f00;
+            --white: #ffffff;
+            --border: #ddd;
+            --gray: #6b7280;
+        }
+
+        body { 
+            font-family: 'Open Sans', Arial, sans-serif; 
+            background: var(--white); 
+            margin: 0; 
+            padding: 20px; 
+            color: #333;
+        }
+
+        .app-container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .header { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            margin-bottom: 20px;
+        }
+
+        h1 { color: var(--primary); margin: 0; }
+
+        .nav-buttons {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        button {
+            background: var(--accent);
+            color: var(--white);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.3s;
+        }
+
+        button:hover { background: #e87c00; }
+
+        #monthYear { font-weight: bold; color: var(--primary); min-width: 120px; text-align: center; }
+
+        main { display: flex; gap: 20px; }
+        .left, .right { flex: 1; }
+
+        #calendar, #stats, #list, .form {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid { 
+            display: grid; 
+            grid-template-columns: repeat(7, 1fr); 
+            gap: 8px; 
+            text-align: center;
+        }
+
+        .dow { font-weight: bold; color: var(--primary); padding-bottom: 10px; }
+
+        .day {
+            aspect-ratio: 1/1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #eee;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-size: 0.9rem;
+        }
+
+        .day:hover { background: #f0f4f8; }
+        
+        .day.has-plan {
+            background: var(--accent) !important;
+            color: white !important;
+            font-weight: bold;
+            border-radius: 50%;
+        }
+
+        .form label { display: block; margin-bottom: 10px; font-weight: bold; color: var(--primary); }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            box-sizing: border-box;
+        }
+
+        .stat-card {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            margin-bottom: 8px;
+        }
+
+        .plan-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .delete-btn { color: #ccc; cursor: pointer; font-weight: bold; }
+        .delete-btn:hover { color: red; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <h1>Planificador 2026</h1>
+        <div class="nav-buttons">
+            <button id="prevBtn">&lt;</button>
+            <span id="monthYear">Abril 2026</span>
+            <button id="nextBtn">&gt;</button>
+        </div>
+    </div>
+
+    <main>
+        <div class="left">
+            <div id="calendar" class="calendar-grid"></div>
+            <div id="stats"></div>
+        </div>
+        <div class="right">
+            <div class="form">
+                <label>Nombre del Plan: <input type="text" id="nameField" placeholder="Ej: Estudiar Java"></label>
+                <label>Fecha: <input type="date" id="dateField"></label>
+                <label>Tipo: 
+                    <select id="typeCombo">
+                        <option value="curso">Curso</option>
+                        <option value="motivacion">Motivación</option>
+                        <option value="informativo">Informativo</option>
+                        <option value="celebracion">Celebración</option>
+                    </select>
+                </label>
+                <button id="addBtn" style="width: 100%; margin-top: 10px;">Guardar en Calendario</button>
+            </div>
+            <div id="list"></div>
+        </div>
+    </main>
+</div>
+
+<script>
+    let fechaVisual = new Date(2026, 3, 1); // Empezamos en Abril 2026 (mes 3)
+    let items = JSON.parse(localStorage.getItem('items')) || [];
+
+    function renderizar() {
+        const calendar = document.getElementById('calendar');
+        const monthYear = document.getElementById('monthYear');
+        const list = document.getElementById('list');
+        const stats = document.getElementById('stats');
+
+        // 1. Actualizar Título
+        const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+        monthYear.textContent = `${meses[fechaVisual.getMonth()]} ${fechaVisual.getFullYear()}`;
+
+        // 2. Dibujar Calendario
+        calendar.innerHTML = '';
+        ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"].forEach(d => {
+            calendar.innerHTML += `<div class="dow">${d}</div>`;
+        });
+
+        const primerDia = new Date(fechaVisual.getFullYear(), fechaVisual.getMonth(), 1).getDay();
+        const diasMes = new Date(fechaVisual.getFullYear(), fechaVisual.getMonth() + 1, 0).getDate();
+
+        for (let i = 0; i < primerDia; i++) calendar.innerHTML += `<div></div>`;
+
+        for (let d = 1; d <= diasMes; d++) {
+            // Formato ISO local YYYY-MM-DD para comparar sin errores de zona horaria
+            const m = String(fechaVisual.getMonth() + 1).padStart(2, '0');
+            const diaStr = String(d).padStart(2, '0');
+            const fechaID = `${fechaVisual.getFullYear()}-${m}-${diaStr}`;
+            
+            const tienePlan = items.some(it => it.date === fechaID);
+            const clasePlan = tienePlan ? 'has-plan' : '';
+            
+            calendar.innerHTML += `<div class="day ${clasePlan}" onclick="seleccionarFecha('${fechaID}')">${d}</div>`;
+        }
+
+        // 3. Filtrar Planes del Mes Actual
+        const planesMes = items.filter(it => {
+            const [y, m] = it.date.split('-');
+            return parseInt(y) === fechaVisual.getFullYear() && parseInt(m) === (fechaVisual.getMonth() + 1);
+        });
+
+        // 4. Dibujar Lista
+        list.innerHTML = `<h3 style="color:var(--primary)">Planes del Mes</h3>`;
+        if (planesMes.length === 0) {
+            list.innerHTML += `<p style="color:var(--gray)">No hay planes para este mes.</p>`;
+        } else {
+            planesMes.forEach(it => {
+                list.innerHTML += `
+                    <div class="plan-item">
+                        <div>
+                            <strong>${it.name}</strong><br>
+                            <small>${it.date} • ${it.type}</small>
+                        </div>
+                        <span class="delete-btn" onclick="borrarPlan(${it.id})">X</span>
+                    </div>`;
+            });
+        }
+
+        // 5. Estadísticas
+        const conteo = { curso: 0, motivacion: 0, informativo: 0, celebracion: 0 };
+        planesMes.forEach(it => conteo[it.type]++);
+        
+        stats.innerHTML = `
+            <div class="stat-card"><span>Curso</span> <strong>${conteo.curso}</strong></div>
+            <div class="stat-card"><span>Motivación</span> <strong>${conteo.motivacion}</strong></div>
+            <div class="stat-card"><span>Informativo</span> <strong>${conteo.informativo}</strong></div>
+            <div class="stat-card"><span>Celebración</span> <strong>${conteo.celebracion}</strong></div>
+        `;
+    }
+
+    function seleccionarFecha(fecha) {
+        document.getElementById('dateField').value = fecha;
+    }
+
+    function borrarPlan(id) {
+        items = items.filter(it => it.id !== id);
+        localStorage.setItem('items', JSON.stringify(items));
+        renderizar();
+    }
+
+    document.getElementById('addBtn').onclick = () => {
+        const name = document.getElementById('nameField').value;
+        const date = document.getElementById('dateField').value;
+        const type = document.getElementById('typeCombo').value;
+
+        if (!name || !date) return alert("Por favor completa nombre y fecha");
+
+        items.push({ id: Date.now(), name, date, type });
+        localStorage.setItem('items', JSON.stringify(items));
+        
+        document.getElementById('nameField').value = '';
+        renderizar();
+    };
+
+    document.getElementById('prevBtn').onclick = () => { fechaVisual.setMonth(fechaVisual.getMonth() - 1); renderizar(); };
+    document.getElementById('nextBtn').onclick = () => { fechaVisual.setMonth(fechaVisual.getMonth() + 1); renderizar(); };
+
+    // Iniciar
+    renderizar();
+</script>
+
+</body>
+</html>
